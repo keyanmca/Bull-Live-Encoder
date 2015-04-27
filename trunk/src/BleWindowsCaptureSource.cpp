@@ -22,12 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include "BleWindowsCaptureSource.hpp"
-#include "BleLog.hpp"
-#include "BleUtil.hpp"
+
 #include <windows.h>
 #include <winuser.h>
 #include <qwindowdefs.h>
-
 #include <QGuiApplication>
 #include <QScreen>
 #include <QImage>
@@ -36,6 +34,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QPainter>
 #include <QtWin>
 #include <QBitmap>
+
+#include "BleLog.hpp"
+#include "BleUtil.hpp"
 
 #define Default_Capture_Interval    50      // default is 20 fps
 
@@ -55,13 +56,15 @@ BleWindowsCaptureSource::~BleWindowsCaptureSource()
 
 }
 
-BleImage BleWindowsCaptureSource::getImage()
+QString BleWindowsCaptureSource::getSourceName()
+{
+    return "BleWindowsCaptureSource";
+}
+
+QImage BleWindowsCaptureSource::getImage()
 {
     BleAutoLocker(m_modifyMutex);
-
-    BleImage be;
-    be = m_image;
-    return be;
+    return m_image;
 }
 
 void BleWindowsCaptureSource::stopCapture()
@@ -79,39 +82,23 @@ void BleWindowsCaptureSource::run()
         QElapsedTimer elapsedTimer;
         elapsedTimer.start();
 
+        // TODO make this to option
+        // option: could select screen
         QScreen *screen = QGuiApplication::primaryScreen();
 
         if (screen) {
             QPixmap pixmap = screen->grabWindow(m_wid, m_x, m_y, m_width, m_height);
+
+            // TODO make this to option
 #if 1
-            // TODO to draw cursor to image
             QRect desktopRect = QRect(QPoint(0, 0), screen->size());
             if (desktopRect.contains(QCursor::pos())) {
                 drawCursor(&pixmap);
             }
 #endif
-            QImage image = pixmap.toImage();
-
-            if (image.format() != QImage::Format_RGB888) {
-                image = image.convertToFormat(QImage::Format_RGB888);
-            }
-
             m_modifyMutex.lock();           // Start lock
-
-            BleImage be;
-            be.width = image.width();
-            be.height = image.height();
-
-            be.data = new char[image.byteCount()];
-            memcpy(be.data, image.bits(), image.byteCount());
-
-            be.dataSize = image.byteCount();
-            be.format = BleImage_Format_RGB24;
-
-            m_image = be;
-
-            m_modifyMutex.unlock();        // Start unlock
-
+            m_image = pixmap.toImage();
+            m_modifyMutex.unlock();
         }
 
         int elapsedMs = elapsedTimer.elapsed();
@@ -132,6 +119,9 @@ void BleWindowsCaptureSource::setGrabInfo(WId window, int x, int y, int w, int h
     m_y = y;
     m_width = w;
     m_height = h;
+
+    // force align to 4 for color cvt performance
+    m_width = m_width / 4 *4;
 }
 
 void BleWindowsCaptureSource::setCaptureInterval(int interval)

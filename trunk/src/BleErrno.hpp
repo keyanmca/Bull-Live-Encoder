@@ -24,11 +24,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef BLEERRNO_H
 #define BLEERRNO_H
 
-#define BLE_SUCESS      0
-#define BLE_FAILED      -1
+#define BLE_SUCESS                              0
+#define BLE_FAILED                              -1
 
 // rtmp errors
-#define BLE_RTMPSEND_ERROR      100
-#define BLE_RTMPCONNECT_ERROR   101
+#define BLE_RTMPSEND_ERROR                      100
+#define BLE_RTMPCONNECT_ERROR                   101
+
+// RtAudio errors
+#define BLE_AUDIO_DEVICE_OPEN_ERROR             201
+#define BLE_AUDIO_INIT_ERROR                    202
+
+// BLE-VLC player error
+#define BLE_VLC_MEDIA_MRL_EMPTY_ERROR           301
+#define BLE_VLC_MEDIA_TYPE_ERROR                302
+#define BLE_VLC_INTERNAL_ERROR                  303
+#define BLE_VLC_MEDIA_OPEN_ERROR                304
+#define BLE_VLC_SAMPLE_NOT_ENOUGH               305
 
 #endif // BLEERRNO_H

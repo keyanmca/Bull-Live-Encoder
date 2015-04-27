@@ -23,11 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <iostream>
 
 #include "BleRtmpMuxer.hpp"
 #include "rtmp.h"
 #include "mstring.hpp"
 #include "mstringlist.hpp"
+#include "BleVersion.hpp"
 
 #define NALU_TYPE_SLICE     1
 #define NALU_TYPE_DPA       2
@@ -45,9 +48,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define StreamChannel_Metadata  0x03
 #define StreamChannel_Video     0x04
 #define StreamChannel_Audio     0x05
-
-#define CODECID_H264    0x07
-#define CODECID_AAC     0x0a;
 
 static char * put_byte(char *output, uint8_t nVal)
 {
@@ -144,6 +144,7 @@ public:
 
     int connect();
     int close();
+    void close_socket();
     int sendPacket(const string &data, unsigned long long timestamp, unsigned int pktType, int channel);
 
 private:
@@ -154,70 +155,18 @@ private:
 BleRtmpMuxer::BleRtmpMuxer()
 {
 }
-#include <iostream>
-int BleRtmpMuxer::addH264(char *data, int size, unsigned long long pts, unsigned long long dts)
+
+int BleRtmpMuxer::addH264(const MStream &data, unsigned long long dts)
 {
-    MString msdata(data, size);
-
-    static MString delim0;
-    static MString delim1;
-    if (delim0.empty()) {
-        delim0.append(1, 0x00);
-        delim0.append(1, 0x00);
-        delim0.append(1, 0x00);
-        delim0.append(1, 0x01);
-    }
-
-    if (delim1.empty()) {
-        delim1.append(1, 0x00);
-        delim1.append(1, 0x00);
-        delim1.append(1, 0x01);
-    }
-
-    MStringList nalus;
-    MStringList nalu_0 = msdata.split(delim0);
-    while (!nalu_0.empty()) {
-        MString nalu = nalu_0.front();
-        MStringList nalu_1 = nalu.split(delim1);
-
-        nalus << nalu_1;
-        nalu_0.pop_front();
-    }
-
-    for (MStringList::iterator iter = nalus.begin(); iter != nalus.end(); ++iter)
-    {
-        MString &nalu = *iter;
-
-        char *nalu_data = const_cast<char*>(nalu.data());
-        int ret = addH264Internal(nalu_data, nalu.size(), pts, dts);
-
-        if (ret != TRUE) {
-            return ret;
-        }
-    }
-
-    return TRUE;
+    return m_rtmpAU->sendPacket(data, dts, RTMP_PACKET_TYPE_VIDEO, StreamChannel_Video);
 }
 
-int BleRtmpMuxer::addAAC(char *data, int size, unsigned long long pts)
+int BleRtmpMuxer::addAAC(const MStream &data, unsigned long long dts)
 {
-    MString audioData(data, size);
-    if (audioData.size() < 7) return 0;
-
-    audioData.erase(0, 7);
-    char* ad = const_cast<char*>(audioData.data());
-    
-    return addAACInternal(ad, audioData.size(), pts);
+    return m_rtmpAU->sendPacket(data, dts, RTMP_PACKET_TYPE_AUDIO, StreamChannel_Audio);
 }
 
-int BleRtmpMuxer::addAACSpeci(char *data, int size)
-{
-    string pkt = genAudioFrame(data, size, true);
-    
-    return m_rtmpAU->sendPacket(pkt, 0, RTMP_PACKET_TYPE_AUDIO, StreamChannel_Audio);
-}
-
-int BleRtmpMuxer::setMetaData(const FlvMetaData &metaData)
+int BleRtmpMuxer::setMetaData(const FlvMetaData &metaData, MStream &body_data)
 {
     m_metaData.clear();
 
@@ -229,9 +178,13 @@ int BleRtmpMuxer::setMetaData(const FlvMetaData &metaData)
     p = put_byte(p, AMF_STRING);
     p = put_amf_string(p, "onMetaData");
     p = put_byte(p, AMF_OBJECT);
-    p = put_amf_string(p, "copyright");
+    p = put_amf_string(p, "encoder");
     p = put_byte(p, AMF_STRING);
-    p = put_amf_string(p, "17173 video group");
+    p = put_amf_string(p, BLE_NAME);
+
+    p = put_amf_string(p, "encoder_authors");
+    p = put_byte(p, AMF_STRING);
+    p = put_amf_string(p, BLE_AUTHORS);
 
     p = put_amf_string(p, "width");
     p = put_amf_double(p, metaData.width);
@@ -254,19 +207,26 @@ int BleRtmpMuxer::setMetaData(const FlvMetaData &metaData)
     p = put_amf_string(p, "audiosamplesize");
     p = put_amf_double(p, metaData.audiosamplesize);
 
-    p = put_amf_string(p, "stereo");
-    p = put_amf_double(p, 1);
-
     p = put_amf_string(p, "audiocodecid");
     p = put_amf_double(p, metaData.audiocodecid);
 
     p = put_amf_string(p, "audiochannels");
-    p = put_amf_double(p, 2);
+    p = put_amf_double(p, metaData.stereo ? 2 : 1);
+
+    p = put_amf_string(p, "creationdate");
+    p = put_byte(p, AMF_STRING);
+    p = put_amf_string(p, metaData.creationdate.c_str());
+
+    p = put_amf_string(p, "canSeekToEnd");
+    p = put_byte(p, AMF_STRING);
+    p = put_amf_string(p, "false");
 
     p = put_amf_string(p, "");
     p = put_byte(p, AMF_OBJECT_END);
 
     m_metaData = string(body, p - body);
+    body_data.append(m_metaData);
+
     return m_rtmpAU->sendPacket(m_metaData, 0, RTMP_PACKET_TYPE_INFO, StreamChannel_Metadata);
 }
 
@@ -287,9 +247,9 @@ int BleRtmpMuxer::stop()
     return m_rtmpAU->close();
 }
 
-int BleRtmpMuxer::init()
+void BleRtmpMuxer::close_socket()
 {
-    return 0;
+    m_rtmpAU->close_socket();
 }
 
 string BleRtmpMuxer::genSequenceHeader()
@@ -419,6 +379,14 @@ RtmpAU::RtmpAU(const string &url)
     , m_pRtmp(RTMP_Alloc())
 {
     RTMP_Init(m_pRtmp);
+    m_pRtmp->m_bUseNagle = TRUE;
+
+    const char *av_val = "FMLE/3.0 (compatible; FMSc/1.0)";
+    m_pRtmp->Link.flashVer.av_val = const_cast<char *> (av_val);
+    m_pRtmp->Link.flashVer.av_len = (int)strlen(m_pRtmp->Link.flashVer.av_val);
+
+    m_pRtmp->m_outChunkSize = 4096;//RTMP_DEFAULT_CHUNKSIZE;//
+    m_pRtmp->m_bSendChunkSizeInfo = TRUE;
 }
 
 RtmpAU::~RtmpAU()
@@ -444,6 +412,16 @@ int RtmpAU::connect()
         return ret;
     }
 
+    int tcpBufferSize = 8196*4;
+    int curTCPBufSize, curTCPBufSizeSize = 4;
+    getsockopt (m_pRtmp->m_sb.sb_socket, SOL_SOCKET, SO_SNDBUF, (char *)&curTCPBufSize, &curTCPBufSizeSize);
+
+    if(curTCPBufSize < int(tcpBufferSize))
+    {
+        setsockopt (m_pRtmp->m_sb.sb_socket, SOL_SOCKET, SO_SNDBUF, (const char *)&tcpBufferSize, sizeof(tcpBufferSize));
+        getsockopt (m_pRtmp->m_sb.sb_socket, SOL_SOCKET, SO_SNDBUF, (char *)&curTCPBufSize, &curTCPBufSizeSize);
+    }
+
     return ret;
 }
 
@@ -457,6 +435,22 @@ int RtmpAU::close()
     }
 
     return 0;
+}
+#include <winsock.h>
+#include "BleLog.hpp"
+void RtmpAU::close_socket()
+{
+    if (m_pRtmp) {
+        SOCKET so = m_pRtmp->m_sb.sb_socket;
+        if (so > 0) {
+            ::shutdown(so, 2);
+#if defined (Q_OS_WIN)
+            ::closesocket(so);
+#elif defined (Q_OS_LINUX)
+            ::close(so);
+#endif
+        }
+    }
 }
 
 int RtmpAU::sendPacket(const string &data, unsigned long long timestamp, unsigned int pktType, int channel)

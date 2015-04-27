@@ -52,6 +52,9 @@ public:
     virtual void mouseReleaseEvent(QMouseEvent * e);
     virtual void mouseDoubleClickEvent(QMouseEvent * e);
     virtual void keyPressEvent(QKeyEvent * e);
+    virtual void focusOutEvent(QFocusEvent * e);
+
+    void resizeEvent(QResizeEvent * event);
 
 private slots:
     void onIncBtnClicked();
@@ -61,9 +64,11 @@ private slots:
     void onLeftBtnClicked();
     void onRightBtnClicked();
     void onRefreshTimeout();
+    void onSettingChanged();
 
 private:
     void updateSources();
+    int getPairIndex(SourcePair *pair);
 
 private:
     Ui::BleImageProcess *ui;

@@ -55,7 +55,7 @@ void ThemedWidgetBase::applyNewTheme()
     m_aeroTransparent = MOption::instance()->option("AeroTransparent", "theme").toInt();
     m_widgetTransparent = MOption::instance()->option("WidgetTransparent", "theme").toInt();
 
-    m_cachedPixmap = MOption::instance()->option("WindowBGPixmap", "theme").toString();
+    m_cachedPixmap = QPixmap(QCoreApplication::applicationDirPath() + MOption::instance()->option("WindowBGPixmap", "theme").toString());
     m_cachedPixmap = setAlphaPixmap(m_cachedPixmap, m_aeroTransparent);
 
     m_cachedColor = MOption::instance()->option("WindowBGColor", "theme").value<QColor>();
@@ -64,13 +64,13 @@ void ThemedWidgetBase::applyNewTheme()
     m_themedWidget->update();
 }
 
-void ThemedWidgetBase::drawThemedStyle(QPainter &p)
+void ThemedWidgetBase::drawThemedStyle(QPainter &p, bool drawLinar)
 {
     QPainterPath path;
     QPoint bottomRight = m_themedWidget->rect().bottomRight();
     QRect pathRect = m_themedWidget->rect();
     pathRect.setBottomRight(QPoint(bottomRight.x()-1, bottomRight.y()-1));
-    path.addRoundedRect(pathRect, 5, 5);
+    path.addRoundedRect(pathRect, 0, 0);
 
     QString themeType = MOption::instance()->option("WindowBGPixmapType", "theme").toString();
     if(themeType == "bitmap")
@@ -86,27 +86,29 @@ void ThemedWidgetBase::drawThemedStyle(QPainter &p)
             MOption::instance()->setOption("color", "WindowBGPixmapType", "theme");
             MOption::instance()->setOption(QVariant(color), OPTION_AVERAGE_COLOR, OPTION_GROUP_Theme);
 
-            //m_cachedColor.setAlpha(45);
             p.fillPath(path, color);
         }
     } else if(themeType == "color")
     {
-        //m_cachedColor.setAlpha(45);
-        p.fillPath(path, m_cachedColor);
+        QImage image(QSize(100, 100), QImage::Format_ARGB32);
+        image.fill(MOption::instance()->option("WindowBGColor", "theme").value<QColor>());
+        m_cachedPixmap = setAlphaPixmap(QPixmap::fromImage(image), m_aeroTransparent);
+        p.fillPath(path, QBrush(m_cachedPixmap));
     }
 
     QRect linearRect(0, m_titleHeight, m_themedWidget->width(), m_linearHeight);
     QLinearGradient linear(0, m_titleHeight, 0, m_linearHeight+m_titleHeight);
 
-    QColor c1(255, 255, 255, m_widgetTransparent /2);;
-    QColor c2(255, 255, 255, m_widgetTransparent);
+    QColor c1(255, 255, 255, m_widgetTransparent);
+    QColor c2(255, 255, 255, m_widgetTransparent / 2);
 
-    linear.setColorAt(0.0, QColor(255, 255, 255, 0));
-    linear.setColorAt(0.5, c1);
-    linear.setColorAt(1.0, c2);
+    linear.setColorAt(0.0, Qt::transparent);
+    //linear.setColorAt(0.5, c2);
+    linear.setColorAt(1.0, c1);
 
     p.setBrush(QBrush(linear));
     p.fillRect(linearRect, QBrush(linear));
+
 
     QPainterPath clientPath;
     QRect clientRect(0, m_titleHeight + m_linearHeight,
@@ -164,7 +166,8 @@ void updateTheme()
                    << sheetPath + "/hbar.qss"
                    << sheetPath + "/menu.qss"
                    << sheetPath + "/tabview.qss"
-                   << sheetPath + "/vbar.qss";
+                   << sheetPath + "/vbar.qss"
+                   << sheetPath + "/checkbox.qss";
 
     QString sheetStr;
     for(int i = 0; i < styleSheetList.size(); ++i)

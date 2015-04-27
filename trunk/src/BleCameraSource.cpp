@@ -43,10 +43,15 @@ BleCameraSource::BleCameraSource(QObject *parent)
 {
 }
 
-BleImage BleCameraSource::getImage()
+QString BleCameraSource::getSourceName()
+{
+    return "BleCameraSource";
+}
+
+QImage BleCameraSource::getImage()
 {
     BleAutoLocker(m_modifyMutex);
-    return m_image;
+    return m_image.rgbSwapped();
 }
 
 void BleCameraSource::stopCapture()
@@ -59,11 +64,12 @@ void BleCameraSource::stopCapture()
 void BleCameraSource::run()
 {
     IplImage *pImg = NULL;
-    CvCapture *cap = cvCaptureFromCAM(m_cameraIndex);
+    CvCapture *cap = cvCreateCameraCapture(m_cameraIndex);
     if (!cap) {
         log_error("open camera failed.");
         return;
     }
+
     log_trace("open camera %d success, name = %s", m_cameraIndex, m_cameraName.toStdString().c_str());
 
     while (!m_stop) {
@@ -75,20 +81,11 @@ void BleCameraSource::run()
 
         m_modifyMutex.lock();           // Start lock
 
-        BleImage be;
-        be.width = pImg->width;
-        be.height = pImg->height;
-
-        be.data = new char[pImg->imageSize];
-        memcpy(be.data, pImg->imageData, pImg->imageSize);
-
-        be.dataSize = pImg->imageSize;
-        be.format = BleImage_Format_BGR24;
-
-        m_image = be;
+        m_image = QImage(pImg->width, pImg->height, QImage::Format_RGB888);
+        uchar *imageData = m_image.bits();
+        memcpy(imageData, pImg->imageData, m_image.byteCount());
 
         m_modifyMutex.unlock();        // Start unlock
-
 
         int elapsedMs = elapsedTimer.elapsed();
         int needSleepMs = m_interval - elapsedMs;
@@ -97,9 +94,7 @@ void BleCameraSource::run()
         }
         msleep(needSleepMs);
     }
-
-    // TODO : ca not release cap or will crash.
-    // cvReleaseCapture(&cap);
+    cvReleaseCapture(&cap);
 
     log_trace("BleCameraCapture exit normally.");
 }

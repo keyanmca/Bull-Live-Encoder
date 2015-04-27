@@ -41,6 +41,11 @@ class BleRtmpSendThread;
 class BleCameraSource;
 class BleImageProcessThread;
 class BleImageProcess;
+class BleAudioCapture;
+class BleFileSource;
+class BleSceneWidget;
+
+class QLabel;
 
 class BleMainWindow : public QMainWindow, public ThemedWidgetBase
 {
@@ -59,9 +64,11 @@ private slots:
     void onMin();
     void onMax();
     void onClose();
+    void onSettins();
     void onDoubleClicked();
     void onSkin();
     void onMenu();
+    void onShow();
     void onTabBarCurrentChanged(int index);
 
     void activated(QSystemTrayIcon::ActivationReason reason);
@@ -73,6 +80,12 @@ private slots:
     void onAddWindowGrab();
     void onDesktopSelected(const QRect &rect);
     void onAddPic();
+    void onAddFileSource();
+    void onAddTextSource();
+    void onAddMedia();
+
+    void onStatus(int audioKbps, int videoKbps, int fps, qint64 sendDataCount);
+    void settingChanged();
 
 private:
     Ui::BleMainWindow *ui;
@@ -86,6 +99,10 @@ private:
     BleRtmpSendThread  *m_sendThread;
     BleImageProcessThread *m_imageProcessThread;
     BleImageProcess *m_imageProcessWidget;
+    BleAudioCapture *m_audioCaptureThread;
+
+    QLabel *m_statusLabel;
+    BleSceneWidget *m_sceneWidget;
 };
 
 #endif // BleMainWindow_H

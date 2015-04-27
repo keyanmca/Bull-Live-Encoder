@@ -73,14 +73,16 @@ public:
 #define BleAutoFreeArray(className, instance) \
     BleAutoFree<className> BleAutoFree##instance(&instance, true)
 
-#define STOP_THREAD(thread) \
+#define SAFE_STOP_THREAD(thread) \
     do { \
-        if (thread->isRunning()) { thread->stop(); thread->wait(); } \
+        if (thread && thread->isRunning()) { thread->stop(); thread->wait(); } \
     } while (0)
 
 #define START_THREAD(thread) \
     do { \
         if (!thread->isRunning()) { thread->start(); } \
     } while (0)
+
+QString formatS_size(qint64 bytes);
 
 #endif // BLEUTIL_H

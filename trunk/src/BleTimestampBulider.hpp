@@ -31,20 +31,28 @@ class BleTimestampBulider
 public:
     BleTimestampBulider();
 
-    void setVideoCaptureInternal(int internal);
-    void setAudioCaptureInternal(int internal);
+    void setVideoCaptureInternal(float internal);
+    void setAudioCaptureInternal(float internal);
 
-    qint64 addVideoFrame();
-    qint64 addAudioFrame();
+    inline float videoInternal() { return m_videoInternal; }
+
+    double addVideoFrame();
+    double addAudioFrame();
+
+private:
+    double next_video_pts();
+    double next_audio_pts();
+
+    void place_hold_video(double pts);
 
 private:
     QMutex m_mutex;
 
-    int m_videoInternal;
-    int m_audiInternal;
+    float m_videoInternal;
+    float m_audioInternal;
 
-    qint64 m_videoTimestamp;
-    qint64 m_audioTimestamp;
+    double m_videoTimestamp;
+    double m_audioTimestamp;
 };
 
 #endif // BLETIMESTAMPBULIDER_HPP

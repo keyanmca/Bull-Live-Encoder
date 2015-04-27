@@ -72,6 +72,22 @@ BleImage::BleImage(const BleImage &other)
     this->addRef();
 }
 
+BleImage BleImage::clone()
+{
+    BleImage image;
+    image.width = width;
+    image.height = height;
+    image.pts = pts;
+    image.format = format;
+
+    image.data = new char[dataSize];
+    memcpy(image.data, data, dataSize);
+
+    image.dataSize = dataSize;
+
+    return image;
+}
+
 int BleImage::addRef()
 {
     *ref += 1;
@@ -94,6 +110,7 @@ void BleImage::init()
     dataSize = 0;
     data = NULL;
     pts = 0;
+    opaque = NULL;
 
     ref = new int(0);
 
@@ -109,9 +126,14 @@ BleSourceAbstract::~BleSourceAbstract()
 
 }
 
-BleImage BleSourceAbstract::getImage()
+QString BleSourceAbstract::getSourceName()
 {
-    return BleImage();
+    return "BleSourceAbstract";
+}
+
+QImage BleSourceAbstract::getImage()
+{
+    return QImage();
 }
 
 void BleSourceAbstract::stopCapture()

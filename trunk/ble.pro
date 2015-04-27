@@ -11,22 +11,30 @@ TARGET = ble
 TEMPLATE = app
 
 # for RtAudio defines
-DEFINES += __WINDOWS_DS__
+DEFINES += __WINDOWS_DS__ LIBVLC_USE_PTHREAD_CANCEL
 
-INCLUDEPATH +=  src/gui
-INCLUDEPATH +=  src/core \
+INCLUDEPATH +=  src \
+                src/gui \
+                src/core \
                 3rdparty/librtmp \
                 3rdparty/libx264 \
                 3rdparty/libopencv/include \
                 3rdparty/libRtAudio/ \
-                3rdparty/libfaac/include
+                3rdparty/libfaac/include \
+                3rdparty/libmp3lame/include \
+                3rdparty/libvlc/include \
+                3rdparty/libvlc/include/vlc/plugins
 
-LIBS += -L$$PWD/3rdparty/librtmp -lrtmp \
+LIBS += -L$$PWD/3rdparty/librtmp/ -lrtmp \
         -L$$PWD/3rdparty/libx264/ -lx264 \
         -L$$PWD/3rdparty/libopenssl/ -lssl \
         -L$$PWD/3rdparty/libopenssl/ -lcrypto \
         -L$$PWD/3rdparty/libopencv/lib/ -lopencv_core248 -lopencv_highgui248 -lopencv_imgproc248 \
-        -L$$PWD/3rdparty/libfaac/lib/ -lfaac
+        -L$$PWD/3rdparty/libfaac/lib/ -lfaac \
+        -L$$PWD/3rdparty/libmp3lame/lib/ -lmp3lame \
+        $$PWD/3rdparty/libvlc/lib/libvlc.lib \
+        $$PWD/3rdparty/libvlc/lib/libvlccore.lib
+
 LIBS += -ldsound -lole32 -lwinmm -lgdi32 -lws2_32 -lz
 
 DESTDIR = $$BLE_BINDIR
@@ -59,7 +67,6 @@ SOURCES += \
     src/BleDesktopAreaSelector.cpp \
     src/BleTimestampBulider.cpp \
     src/BlePictureSource.cpp \
-    src/gui/BleWinAero.cpp \
     src/gui/MCustomDialog.cpp \
     src/gui/MOption.cpp \
     src/gui/MSkinChanger.cpp \
@@ -78,7 +85,26 @@ SOURCES += \
     src/gui/TitleWidget.cpp \
     3rdparty/libRtAudio/RtAudio.cpp \
     src/BleAudioCapture.cpp \
-    src/BleAudioEncoder_AAC.cpp
+    src/BleAudioEncoder_AAC.cpp \
+    src/BleAVQueue.cpp \
+    src/BleAVUtil.cpp \
+    src/BleAudioEncoderAbstract.cpp \
+    src/BleFileSource.cpp \
+    src/core/mstream.cpp \
+    src/BleContext.cpp \
+    src/BleTextSource.cpp \
+    src/BleAudioEncoder_MP3.cpp \
+    src/BleImageCaptureThread.cpp \
+    src/BleAVContext.cpp \
+    src/BleMediaSelector.cpp \
+    src/BleSceneWidget.cpp \
+    src/BleResizeableWidget.cpp \
+    src/BleVLCPlayer.cpp \
+    src/BleNetStreamSource.cpp \
+    src/BlePixmapItem.cpp \
+    src/BleSceneThumbNail.cpp \
+    src/BleImageProcessProxy.cpp \
+    src/BleSettingBar.cpp
 
 HEADERS  += \
     src/BleMainWindow.hpp \
@@ -104,7 +130,6 @@ HEADERS  += \
     src/BleDesktopAreaSelector.hpp \
     src/BleTimestampBulider.hpp \
     src/BlePictureSource.hpp \
-    src/gui/BleWinAero.hpp \
     src/gui/MCustomDialog.h \
     src/gui/MOption.h \
     src/gui/MSkinChanger.h \
@@ -124,7 +149,27 @@ HEADERS  += \
     3rdparty/libRtAudio/RtAudio.h \
     3rdparty/libRtAudio/RtError.h \
     src/BleAudioCapture.hpp \
-    src/BleAudioEncoder_AAC.hpp
+    src/BleAudioEncoder_AAC.hpp \
+    src/BleAVQueue.hpp \
+    src/BleAVUtil.hpp \
+    src/BleAudioEncoderAbstract.hpp \
+    src/BleVersion.hpp \
+    src/BleFileSource.hpp \
+    src/core/mstream.hpp \
+    src/BleContext.hpp \
+    src/BleTextSource.hpp \
+    src/BleAudioEncoder_MP3.hpp \
+    src/BleImageCaptureThread.hpp \
+    src/BleAVContext.hpp \
+    src/BleMediaSelector.hpp \
+    src/BleSceneWidget.hpp \
+    src/BleResizeableWidget.hpp \
+    src/BleVLCPlayer.hpp \
+    src/BleNetStreamSource.hpp \
+    src/BlePixmapItem.hpp \
+    src/BleSceneThumbNail.hpp \
+    src/BleImageProcessProxy.hpp \
+    src/BleSettingBar.hpp
 
 FORMS    += \
     src/BleMainWindow.ui \
@@ -139,9 +184,15 @@ FORMS    += \
     src/gui/RecSkinDialog.ui \
     src/gui/RecSkinPickerWidget.ui \
     src/gui/RecSkinWidget.ui \
-    src/gui/TitleWidget.ui
+    src/gui/TitleWidget.ui \
+    src/BleMediaSelector.ui \
+    src/BleSceneWidget.ui \
+    src/BlePixmapItem.ui \
+    src/BleSceneThumbNail.ui \
+    src/BleImageProcessProxy.ui \
+    src/BleSettingBar.ui
 
 win32:RC_FILE = src/ble.rc
-
+TRANSLATIONS = locale/zh.ts locale/tw.ts locale/en.ts
 RESOURCES += src/res.qrc \
     src/gui/gui.qrc

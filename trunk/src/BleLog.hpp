@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <stdarg.h>
 #include <QFile>
+#include <QMutex>
 
 class MLogLevel
 {
@@ -56,7 +57,7 @@ public:
     void setEnableColorPrint(bool enabled);
 
     void setTimeFormat(const MString &fmt);
-    void setFilePath(const MString &path);
+    void setFilePath(const QString &path);
 
     virtual void verbose(const char *file, muint16 line, const char *function, const char *tag, const char* fmt, ...);
     virtual void info(const char *file, muint16 line, const char *function, const char *tag,  const char* fmt, ...);
@@ -81,7 +82,9 @@ private:
     muint16 m_bufferLength;
 
     MString m_timeFormat;
-    MString m_filePath;
+    QString m_filePath;
+
+    QMutex m_mutex;
 };
 
 extern BleLog *g_logCtx;

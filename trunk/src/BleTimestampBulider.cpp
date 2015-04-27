@@ -24,64 +24,61 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BleTimestampBulider.hpp"
 
 #include "BleUtil.hpp"
-
-static qint64 growTimestamp(qint64 & timestamp, int internal, qint64 & otherTimestamp)
-{
-    if (timestamp <= otherTimestamp) {
-        while (timestamp <= otherTimestamp) {
-            timestamp += internal;
-        }
-    } else {
-       timestamp += internal;
-    }
-
-    return timestamp;
-}
+#include "BleAVQueue.hpp"
+#include "BleAVUtil.hpp"
 
 BleTimestampBulider::BleTimestampBulider()
-    : m_videoInternal(50)
-    , m_audiInternal(23)
-    , m_videoTimestamp(0)
-    , m_audioTimestamp(0)
+    : m_videoInternal(66.66666666666667)        // default 15fps
+    , m_audioInternal(23.2199546485261)          // default aac 44100Hz
+    , m_videoTimestamp(0.00)
+    , m_audioTimestamp(0.00)
 {
 }
 
-void BleTimestampBulider::setVideoCaptureInternal(int internal)
+void BleTimestampBulider::setVideoCaptureInternal(float internal)
 {
     m_videoInternal = internal;
 }
 
-void BleTimestampBulider::setAudioCaptureInternal(int internal)
+void BleTimestampBulider::setAudioCaptureInternal(float internal)
 {
-    m_audiInternal = internal;
+    m_audioInternal = internal;
 }
 
-qint64 BleTimestampBulider::addVideoFrame()
+double BleTimestampBulider::addVideoFrame()
+{
+    // never go to here.
+    BleAssert(false);
+    return 0.0;
+}
+
+double BleTimestampBulider::addAudioFrame()
 {
     BleAutoLocker(m_mutex);
 
-    qint64 ret = 0;
-    if (m_videoTimestamp == 0) {
-        ret = 0;
-        m_videoTimestamp += m_videoInternal;
-    } else {
-        ret = growTimestamp(m_videoTimestamp, m_videoInternal, m_audioTimestamp);
+    while (next_audio_pts() >= next_video_pts()) {
+        m_videoTimestamp = next_video_pts();
+        place_hold_video(m_videoTimestamp);
     }
 
-    return ret;
+    m_audioTimestamp = next_audio_pts();
+    return m_audioTimestamp;
 }
 
-qint64 BleTimestampBulider::addAudioFrame()
+double BleTimestampBulider::next_video_pts()
 {
-    BleAutoLocker(m_mutex);
+    return m_videoTimestamp + m_videoInternal;
+}
 
-    qint64 ret = 0;
-    if (m_audioTimestamp == 0) {
-        ret = 0;
-        m_audioTimestamp += m_audiInternal;
-    } else {
-        ret = growTimestamp(m_audioTimestamp, m_audiInternal, m_videoTimestamp);
-    }
+double BleTimestampBulider::next_audio_pts()
+{
+    return m_audioTimestamp + m_audioInternal;
+}
 
-    return ret;
+void BleTimestampBulider::place_hold_video(double pts)
+{
+    BleVideoPacket *pkt = new BleVideoPacket(Video_Type_H264);
+    pkt->has_encoded = false;
+    pkt->dts = pts;
+    BleAVQueue::instance()->enqueue(pkt);
 }

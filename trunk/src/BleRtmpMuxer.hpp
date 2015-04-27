@@ -26,7 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <string>
 
+#include "mstream.hpp"
+
 using namespace std;
+
+#define CODECID_H264    (0x07)
+#define CODECID_AAC     (0x0a)
 
 /*!
     @brief the flv metadata
@@ -65,18 +70,14 @@ public:
     /*!
         @param data point to one NALU
     */
-    int addH264(char *data, int size, unsigned long long pts, unsigned long long dts);
+    int addH264(const MStream &data, unsigned long long dts);
 
     /*!
         @param data point to one audio frame
     */
-    int addAAC(char *data, int size, unsigned long long pts);
-    /*!
-        @param data point to one audio spc
-    */
-    int addAACSpeci(char *data, int size);
+    int addAAC(const MStream &data, unsigned long long dts);
 
-    int setMetaData(const FlvMetaData &metaData);
+    int setMetaData(const FlvMetaData &metaData, MStream &body_data);
 
     /*!
         @param url a complete RTMP URL
@@ -97,8 +98,12 @@ public:
       */
     int stop();
 
+    /*!
+        close under-layer socket.
+    */
+    void close_socket();
+
 private:
-    int init();
     string genSequenceHeader();
     string genSPS();
     string genVideoFrame(char *data, int size, unsigned long long pts, unsigned long long dts, bool keyframe);
